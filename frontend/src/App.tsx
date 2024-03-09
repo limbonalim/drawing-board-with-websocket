@@ -1,146 +1,46 @@
 import './App.css';
 import Canvas from './Canvas.tsx';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { IPath } from './types';
 import ColorPicker from './ColorPicker.tsx';
 
 const App = () => {
   const [selectColor, setSelectColor] = useState('#000000');
-  const [draw, setDraw] = useState<IPath | null>(null);
-  const test: IPath[] = [{
-    path: [
-      {
-        x: 241,
-        y: 321
-      },
-      {
-        x: 241,
-        y: 320
-      },
-      {
-        x: 242,
-        y: 318
-      },
-      {
-        x: 243,
-        y: 316
-      },
-      {
-        x: 245,
-        y: 315
-      },
-      {
-        x: 249,
-        y: 311
-      },
-      {
-        x: 253,
-        y: 307
-      },
-      {
-        x: 259,
-        y: 301
-      },
-      {
-        x: 264,
-        y: 296
-      },
-      {
-        x: 268,
-        y: 291
-      },
-      {
-        x: 271,
-        y: 287
-      },
-      {
-        x: 274,
-        y: 283
-      },
-      {
-        x: 276,
-        y: 281
-      },
-      {
-        x: 278,
-        y: 280
-      },
-      {
-        x: 279,
-        y: 279
-      },
-      {
-        x: 279,
-        y: 279
-      },
-      {
-        x: 280,
-        y: 279
-      },
-      {
-        x: 280,
-        y: 279
-      },
-      {
-        x: 280,
-        y: 280
-      }
-    ],
-    color: "#d11595"
-  },
-    {
-      path: [
-        {
-          x: 422,
-          y: 203
-        },
-        {
-          x: 423,
-          y: 204
-        },
-        {
-          x: 425,
-          y: 207
-        },
-        {
-          x: 427,
-          y: 210
-        },
-        {
-          x: 429,
-          y: 213
-        },
-        {
-          x: 430,
-          y: 215
-        },
-        {
-          x: 430,
-          y: 216
-        },
-        {
-          x: 430,
-          y: 216
-        }
-      ],
-      color: "#000000"
+  const [allDraws, setAllDraws] = useState<IPath[]>([]);
+  const ws = useRef<WebSocket | null>(null);
+
+
+  useEffect(() => {
+    ws.current = new WebSocket('ws://localhost:8000/drawing');
+
+    ws.current.onclose = () => console.log('ws closed');
+
+    ws.current.onmessage = (event) => {
+      const decodedDraw = JSON.parse(event.data) as IPath;
+      setAllDraws(prev => [...prev, decodedDraw]);
     }
-  ];
 
-  const getDraw = (path: IPath) => {
-    setDraw(path);
-    console.log(path);
-  };
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    }
+  }, []);
 
-  const handleChangeColor = (color: string) => {
+  const getDraw = useCallback((path: IPath) => {
+    if (!ws.current) return;
+    ws.current.send(JSON.stringify(path));
+  },[]);
+
+  const handleChangeColor = useCallback((color: string) => {
     setSelectColor(color)
-  }
+  }, []);
 
 
 
   return (
     <>
-      <Canvas width={800} height={600} getDraw={getDraw} color={selectColor} data={test}/>
+      <Canvas width={800} height={600} getDraw={getDraw} color={selectColor} data={allDraws}/>
       <ColorPicker onChange={handleChangeColor}/>
     </>
   );
